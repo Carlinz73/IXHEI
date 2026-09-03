@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="IXHEI - Achados e Perdidos por sala" />
+  <title>IXHEI - Sala 3</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body data-room="3">
+  <header class="topbar">
+    <a class="brand" href="#">IXHEI</a>
+    <nav>
+      <button class="ghost" id="btnHome">Início</button>
+      <button class="ghost" id="btnMyPosts">Minhas publicações</button>
+      <button class="ghost" id="btnInbox">Conversas <span id="unreadBadge" class="unread-badge hidden">0</span></button>
+      <button class="primary" id="btnNew">+ Publicar</button>
+      <button class="ghost" id="btnAuth">Entrar</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div>
+        <span class="badge">Achados e Perdidos</span>
+        <h1>Sala 3 <span>• IXHEI</span></h1>
+        <p>Achados e perdidos exclusivos da Sala 3.</p>
+      </div>
+      <div class="search-box">
+        <input id="searchInput" type="search" placeholder="Pesquisar: estojo, chave, garrafa..." />
+        <select id="typeFilter">
+          <option value="">Todos</option>
+          <option value="achado">Achados</option>
+          <option value="perdido">Perdidos</option>
+        </select>
+      </div>
+    </section>
+
+    <section>
+      <h2>Salas</h2>
+      <div id="roomTabs" class="rooms"><a class="room " href="sala1.html">Sala 1</a><a class="room " href="sala2.html">Sala 2</a><a class="room active" href="sala3.html">Sala 3</a><a class="room " href="sala4.html">Sala 4</a><a class="room " href="sala5.html">Sala 5</a><a class="room " href="sala6.html">Sala 6</a><a class="room " href="sala7.html">Sala 7</a><a class="room " href="sala8.html">Sala 8</a><a class="room " href="sala9.html">Sala 9</a><a class="room " href="sala10.html">Sala 10</a><a class="room " href="sala11.html">Sala 11</a><a class="room " href="sala12.html">Sala 12</a><a class="room " href="sala13.html">Sala 13</a><a class="room " href="sala14.html">Sala 14</a></div>
+    </section>
+
+    <section class="content-head">
+      <div>
+        <h2 id="listTitle">Publicações recentes</h2>
+        <p id="listSubtitle">Itens publicados pela comunidade.</p>
+      </div>
+      <button class="secondary" id="btnClearRoom">Todas as salas</button>
+    </section>
+
+    <section id="itemsGrid" class="grid"></section>
+    <div id="emptyState" class="empty hidden">
+      <h3>Nenhum item encontrado</h3>
+      <p>Tente outra sala ou publique um novo item.</p>
+    </div>
+  </main>
+
+  <div class="modal hidden" id="authModal">
+    <div class="modal-card small">
+      <button class="close" data-close="authModal">×</button>
+      <h2>Entrar no IXHEI</h2>
+      <p>Use seu e-mail para criar uma conta ou entrar.</p>
+      <form id="authForm">
+        <label>E-mail<input id="authEmail" type="email" required placeholder="seuemail@exemplo.com" /></label>
+        <label>Senha<input id="authPassword" type="password" minlength="6" required placeholder="Mínimo 6 caracteres" /></label>
+        <button class="primary wide" type="submit">Entrar</button>
+      </form>
+      <button id="btnSignup" class="secondary wide">Criar conta</button>
+      <p id="authMessage" class="message"></p>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="postModal">
+    <div class="modal-card">
+      <button class="close" data-close="postModal">×</button>
+      <h2>Nova publicação</h2>
+      <form id="postForm">
+        <div class="two-cols">
+          <label>Tipo
+            <select id="postType" required>
+              <option value="achado">Eu achei</option>
+              <option value="perdido">Eu perdi</option>
+            </select>
+          </label>
+          <label>Sala
+            <select id="postRoom" required></select>
+          </label>
+        </div>
+        <label>Nome do item<input id="postTitle" maxlength="80" required placeholder="Ex.: Estojo preto" /></label>
+        <label>Descrição<textarea id="postDescription" maxlength="800" required placeholder="Descreva cor, marca, detalhes..."></textarea></label>
+        <div class="two-cols">
+          <label>Local<input id="postLocation" maxlength="100" placeholder="Ex.: próximo à porta" /></label>
+          <label>Data<input id="postDate" type="date" required /></label>
+        </div>
+        <label>Foto do item (opcional)<input id="postImage" type="file" accept="image/*" /></label>
+        <button class="primary wide" type="submit">Publicar item</button>
+        <p id="postMessage" class="message"></p>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="detailModal">
+    <div class="modal-card">
+      <button class="close" data-close="detailModal">×</button>
+      <div id="detailContent"></div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="inboxModal">
+    <div class="modal-card chat-modal">
+      <button class="close" data-close="inboxModal">×</button>
+      <div class="chat-layout">
+        <aside class="conversation-list-wrap">
+          <div class="conversation-head">
+            <h2>Conversas</h2>
+            <button class="icon-btn" id="btnRefreshInbox" title="Atualizar">↻</button>
+          </div>
+          <div id="conversationList" class="conversation-list"></div>
+        </aside>
+
+        <section class="conversation-panel">
+          <div id="chatPlaceholder" class="chat-placeholder">
+            <div>
+              <h3>Selecione uma conversa</h3>
+              <p>As mensagens sobre seus itens aparecerão aqui.</p>
+            </div>
+          </div>
+
+          <div id="activeChat" class="active-chat hidden">
+            <div class="active-chat-head">
+              <div>
+                <strong id="activeChatTitle">Item</strong>
+                <small id="activeChatSubtitle"></small>
+              </div>
+              <button id="btnOpenItem" class="secondary">Ver item</button>
+            </div>
+
+            <div id="messages" class="messages"></div>
+
+            <form id="messageForm" class="message-form">
+              <input id="messageInput" maxlength="500" required placeholder="Digite sua mensagem..." autocomplete="off" />
+              <button class="primary" type="submit">Enviar</button>
+            </form>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <button id="bottomHome"><span>⌂</span>Início</button>
+    <button id="bottomAchados"><span>✓</span>Achados</button>
+    <button class="bottom-main" id="bottomPublish"><span>＋</span>Publicar</button>
+    <button id="bottomInbox"><span>💬</span>Conversas</button>
+    <button id="bottomProfile"><span>☺</span>Perfil</button>
+  </nav>
+  <footer>IXHEI • Achados e Perdidos</footer>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
