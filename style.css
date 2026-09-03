@@ -62,3 +62,42 @@ input,select,textarea{width:100%;border:1px solid var(--border);border-radius:12
 .danger{border:0;border-radius:11px;padding:10px 14px;cursor:pointer;font-weight:800;background:#ffe8eb;color:#b42335}
 .danger:hover{background:#ffd8de}
 .danger:disabled{opacity:.6;cursor:not-allowed}
+
+
+/* Login com Google */
+.auth-separator{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin:14px 0;
+  color:#777;
+  font-size:13px;
+}
+.auth-separator::before,
+.auth-separator::after{
+  content:"";
+  height:1px;
+  flex:1;
+  background:#e6e6e6;
+}
+.google-login{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  border:1px solid #d9d9d9;
+  background:#fff;
+  color:#222;
+  border-radius:11px;
+  padding:11px 14px;
+  font-weight:700;
+  cursor:pointer;
+}
+.google-login:hover{background:#f7f7f7}
+.google-login:disabled{opacity:.65;cursor:not-allowed}
+.google-g{
+  font-family:Arial,sans-serif;
+  font-size:18px;
+  font-weight:900;
+  color:#4285f4;
+}

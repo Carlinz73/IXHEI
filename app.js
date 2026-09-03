@@ -63,6 +63,56 @@ if($("#btnSignup")) $("#btnSignup").onclick=async()=>{
   $("#authMessage").textContent=error?error.message:"Conta criada. Confira seu e-mail se a confirmação estiver ativada.";
 };
 
+
+function setupGoogleLogin(){
+  const form=$("#authForm");
+  if(!form || $("#btnGoogleLogin")) return;
+
+  const separator=document.createElement("div");
+  separator.className="auth-separator";
+  separator.innerHTML="<span>ou</span>";
+
+  const btn=document.createElement("button");
+  btn.type="button";
+  btn.id="btnGoogleLogin";
+  btn.className="google-login wide";
+  btn.innerHTML=`
+    <span class="google-g" aria-hidden="true">G</span>
+    <span>Continuar com Google</span>
+  `;
+
+  form.insertAdjacentElement("afterend", separator);
+  separator.insertAdjacentElement("afterend", btn);
+
+  btn.onclick=async()=>{
+    if(!db) return configWarning("#authMessage");
+
+    const msg=$("#authMessage");
+    btn.disabled=true;
+    btn.querySelector("span:last-child").textContent="Abrindo Google...";
+    if(msg) msg.textContent="";
+
+    const redirectTo=window.location.origin + window.location.pathname;
+
+    const {error}=await db.auth.signInWithOAuth({
+      provider:"google",
+      options:{
+        redirectTo,
+        queryParams:{
+          prompt:"select_account"
+        }
+      }
+    });
+
+    if(error){
+      console.error("Erro no login Google:",error);
+      if(msg) msg.textContent=error.message;
+      btn.disabled=false;
+      btn.querySelector("span:last-child").textContent="Continuar com Google";
+    }
+  };
+}
+
 if($("#btnNew")) $("#btnNew").onclick=()=>{
   if(!currentUser){openModal("authModal");$("#authMessage").textContent="Entre para publicar.";return;}
   $("#postDate").value=new Date().toISOString().slice(0,10);openModal("postModal");
@@ -540,4 +590,24 @@ bind("bottomPublish",()=>$("#btnNew").click());
 bind("bottomInbox",()=>$("#btnInbox").click());
 bind("bottomProfile",showProfile);
 
-(async()=>{setupRooms();await refreshAuth();loadItems()})();
+if(db){
+  db.auth.onAuthStateChange(async(event,session)=>{
+    currentUser=session?.user||null;
+    if($("#btnAuth")) $("#btnAuth").textContent=currentUser?"Sair":"Entrar";
+    if(currentUser){
+      subscribeInbox();
+      updateUnreadBadge();
+      if(event==="SIGNED_IN") closeModal("authModal");
+    }else{
+      unsubscribeInbox();
+      if($("#unreadBadge")) $("#unreadBadge").classList.add("hidden");
+    }
+  });
+}
+
+(async()=>{
+  setupRooms();
+  setupGoogleLogin();
+  await refreshAuth();
+  loadItems();
+})();
