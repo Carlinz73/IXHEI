@@ -1,15 +1,26 @@
 const configured = !SUPABASE_URL.includes("COLE_") && !SUPABASE_ANON_KEY.includes("COLE_");
 const db = configured ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-let currentRoom = document.body.dataset.room ? Number(document.body.dataset.room) : null;
+let currentRoom = document.body.dataset.room || null;
 const fixedRoom = currentRoom;
 let currentUser = null;
 let currentItem = null;
 let currentConversation = null;
 let myPostsOnly = false;
 let inboxChannel = null;
+let isAdmin = false;
+let currentProfile = null;
 const $ = s => document.querySelector(s);
-const rooms = Array.from({length:14},(_,i)=>i+1);
+const rooms = Array.from({length:14},(_,i)=>String(i+1));
+const extraLocations = [
+  {value:"patio", label:"Pátio", file:"patio.html"},
+  {value:"corredor", label:"Corredor", file:"corredor.html"}
+];
+function locationLabel(v){
+  if(v==="patio") return "Pátio";
+  if(v==="corredor") return "Corredor";
+  return `Sala ${v}`;
+}
 
 function esc(v=""){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function openModal(id){const el=$("#"+id); if(el) el.classList.remove("hidden")}
@@ -18,21 +29,135 @@ function formatDate(d){if(!d)return"Sem data";return new Date(d+"T12:00:00").toL
 function formatTime(d){return new Date(d).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}
 function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}}
 function configWarning(sel){const el=$(sel); if(el) el.textContent="Configure o Supabase no arquivo config.js primeiro."}
+
+function defaultDisplayName(user){
+  const meta=user?.user_metadata||{};
+  const googleName=meta.full_name||meta.name||meta.user_name;
+  if(googleName && String(googleName).trim()) return String(googleName).trim().slice(0,60);
+  const email=user?.email||"";
+  if(email.includes("@")) return email.split("@")[0].slice(0,60);
+  return "Usuário";
+}
+
+async function ensureProfile(user=currentUser){
+  if(!db||!user)return null;
+  const {data,error}=await db.from("profiles").select("id,display_name,role").eq("id",user.id).maybeSingle();
+  if(error){
+    console.warn("Não foi possível carregar o perfil:",error);
+    return null;
+  }
+  if(data)return data;
+
+  const display_name=defaultDisplayName(user);
+  const {data:created,error:createError}=await db.from("profiles")
+    .insert({id:user.id,display_name})
+    .select("id,display_name,role")
+    .single();
+  if(createError){
+    console.warn("Não foi possível criar o perfil:",createError);
+    return {id:user.id,display_name,role:"user"};
+  }
+  return created;
+}
+
+
+async function updateAdminState(){
+  isAdmin=false;
+  currentProfile=null;
+  if(!db||!currentUser){
+    renderAdminNav();
+    return;
+  }
+
+  const {data,error}=await db
+    .from("profiles")
+    .select("id,display_name,role")
+    .eq("id",currentUser.id)
+    .maybeSingle();
+
+  if(error){
+    console.warn("Erro ao verificar administrador:",error);
+    renderAdminNav();
+    return;
+  }
+
+  currentProfile=data||null;
+  isAdmin=data?.role==="admin";
+  renderAdminNav();
+}
+
+function renderAdminNav(){
+  let btn=$("#btnAdmin");
+  if(isAdmin){
+    if(!btn){
+      const nav=document.querySelector(".topbar nav");
+      if(nav){
+        btn=document.createElement("button");
+        btn.id="btnAdmin";
+        btn.className="ghost admin-nav-btn";
+        btn.textContent="Painel Chefe";
+        const profileBtn=$("#btnProfile");
+        const authBtn=$("#btnAuth");
+        nav.insertBefore(btn,profileBtn||authBtn||null);
+      }
+    }
+    if(btn) btn.onclick=openAdminPanel;
+  }else if(btn){
+    btn.remove();
+  }
+}
+
+async function getProfileName(userId){
+  if(!db||!userId)return "Usuário";
+  const {data}=await db.from("profiles").select("display_name").eq("id",userId).maybeSingle();
+  return data?.display_name||"Usuário";
+}
+
+async function attachProfileNames(items){
+  if(!db||!items?.length)return items||[];
+  const ids=[...new Set(items.map(i=>i.user_id).filter(Boolean))];
+  if(!ids.length)return items;
+  const {data,error}=await db.from("profiles").select("id,display_name").in("id",ids);
+  if(error){
+    console.warn("Erro ao carregar nomes dos autores:",error);
+    return items;
+  }
+  const names=new Map((data||[]).map(p=>[p.id,p.display_name]));
+  return items.map(i=>({...i,author_name:names.get(i.user_id)||"Usuário"}));
+}
 document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>closeModal(b.dataset.close));
 
 function setupRooms(){
-  if($("#roomTabs")) $("#roomTabs").innerHTML=rooms.map(n=>`<a class="room ${currentRoom===n?"active":""}" href="sala${n}.html">Sala ${n}</a>`).join("");
+  const roomLinks=rooms.map(n=>`<a class="room ${currentRoom===n?"active":""}" href="sala${n}.html">Sala ${n}</a>`);
+  const extraLinks=extraLocations.map(l=>`<a class="room ${currentRoom===l.value?"active":""}" href="${l.file}">${l.label}</a>`);
+  if($("#roomTabs")) $("#roomTabs").innerHTML=[...roomLinks,...extraLinks].join("");
+
   const cards=$("#roomCards");
-  if(cards && !cards.children.length){
-    cards.innerHTML=rooms.map(n=>`<a class="room-app-card" href="sala${n}.html">
-      <span class="room-number">SALA ${String(n).padStart(2,"0")}</span>
-      <strong>Sala ${n}</strong>
-      <span class="room-arrow">→</span>
-    </a>`).join("");
+  if(cards){
+    cards.innerHTML=[
+      ...rooms.map(n=>`<a class="room-app-card" href="sala${n}.html">
+        <span class="room-number">SALA ${String(n).padStart(2,"0")}</span>
+        <strong>Sala ${n}</strong>
+        <span class="room-arrow">→</span>
+      </a>`),
+      ...extraLocations.map(l=>`<a class="room-app-card" href="${l.file}">
+        <span class="room-number">LOCAL</span>
+        <strong>${l.label}</strong>
+        <span class="room-arrow">→</span>
+      </a>`)
+    ].join("");
   }
-  if($("#postRoom")) $("#postRoom").innerHTML=rooms.map(n=>`<option value="${n}" ${currentRoom===n?"selected":""}>Sala ${n}</option>`).join("");
-  if(fixedRoom){
-    if($("#postRoom")){ $("#postRoom").value=String(fixedRoom); $("#postRoom").disabled=true; }
+
+  if($("#postRoom")){
+    $("#postRoom").innerHTML=[
+      ...rooms.map(n=>`<option value="${n}" ${currentRoom===n?"selected":""}>Sala ${n}</option>`),
+      ...extraLocations.map(l=>`<option value="${l.value}" ${currentRoom===l.value?"selected":""}>${l.label}</option>`)
+    ].join("");
+  }
+
+  if(fixedRoom && $("#postRoom")){
+    $("#postRoom").value=String(fixedRoom);
+    $("#postRoom").disabled=true;
   }
 }
 
@@ -41,8 +166,8 @@ async function refreshAuth(){
   const {data:{user}}=await db.auth.getUser();
   currentUser=user;
   if($("#btnAuth")) $("#btnAuth").textContent=user?"Sair":"Entrar";
-  if(user){subscribeInbox();updateUnreadBadge();}
-  else{if($("#unreadBadge")) $("#unreadBadge").classList.add("hidden");unsubscribeInbox();}
+  if(user){await ensureProfile(user);await updateAdminState();subscribeInbox();updateUnreadBadge();}
+  else{isAdmin=false;currentProfile=null;renderAdminNav();if($("#unreadBadge")) $("#unreadBadge").classList.add("hidden");unsubscribeInbox();}
 }
 
 if($("#btnAuth")) $("#btnAuth").onclick=async()=>{
@@ -129,7 +254,7 @@ if($("#postForm")) $("#postForm").onsubmit=async e=>{
     if(error){$("#postMessage").textContent=error.message;return;}
     image_url=db.storage.from("item-images").getPublicUrl(path).data.publicUrl;
   }
-  const payload={user_id:currentUser.id,type:$("#postType").value,room:fixedRoom || Number($("#postRoom").value),title:$("#postTitle").value.trim(),description:$("#postDescription").value.trim(),location:$("#postLocation").value.trim(),event_date:$("#postDate").value,image_url};
+  const payload={user_id:currentUser.id,type:$("#postType").value,room:fixedRoom || $("#postRoom").value,title:$("#postTitle").value.trim(),description:$("#postDescription").value.trim(),location:$("#postLocation").value.trim(),event_date:$("#postDate").value,image_url};
   const {error}=await db.from("items").insert(payload);
   $("#postMessage").textContent=error?error.message:"Publicado!";
   if(!error){e.target.reset();setTimeout(()=>closeModal("postModal"),400);loadItems();}
@@ -137,7 +262,7 @@ if($("#postForm")) $("#postForm").onsubmit=async e=>{
 
 async function loadItems(){
   if(!$("#itemsGrid")) return;
-  if($("#listTitle")) $("#listTitle").textContent=myPostsOnly?"Minhas publicações":currentRoom?`Sala ${currentRoom}`:"Publicações recentes";
+  if($("#listTitle")) $("#listTitle").textContent=myPostsOnly?"Minhas publicações":currentRoom?locationLabel(currentRoom):"Publicações recentes";
   if(!db){$("#itemsGrid").innerHTML=demoCards();if($("#emptyState"))$("#emptyState").classList.add("hidden");return;}
   let q=db.from("items").select("*").order("created_at",{ascending:false});
   if(currentRoom)q=q.eq("room",currentRoom);
@@ -146,15 +271,19 @@ async function loadItems(){
   const type=$("#typeFilter")?$("#typeFilter").value:"";if(type)q=q.eq("type",type);
   const {data,error}=await q.limit(100);
   if(error){$("#itemsGrid").innerHTML=`<p>${esc(error.message)}</p>`;return;}
-  renderItems(data||[]);
+  const itemsWithNames=await attachProfileNames(data||[]);
+  renderItems(itemsWithNames);
 }
 
 function renderItems(items){
   if($("#emptyState")) $("#emptyState").classList.toggle("hidden",items.length>0);
   $("#itemsGrid").innerHTML=items.map(i=>`<article class="item-card" data-id="${i.id}">
     <div class="item-image">${i.image_url?`<img src="${esc(i.image_url)}" alt="${esc(i.title)}">`:"Sem foto"}</div>
-    <div class="item-body"><div class="row"><span class="pill ${i.type}">${i.type==="achado"?"ACHADO":"PERDIDO"}</span><strong>Sala ${i.room}</strong></div>
-    <h3>${esc(i.title)}</h3><p>${esc(i.description).slice(0,150)}</p><div class="meta">${esc(i.location||"Local não informado")} • ${formatDate(i.event_date)}</div></div>
+    <div class="item-body"><div class="row"><span class="pill ${i.type}">${i.type==="achado"?"ACHADO":"PERDIDO"}</span><strong>${locationLabel(String(i.room))}</strong></div>
+    <h3>${esc(i.title)}</h3>
+    <p class="item-author">Publicado por <strong>${esc(i.author_name||"Usuário")}</strong></p>
+    <p>${esc(i.description).slice(0,150)}</p>
+    <div class="meta">${esc(i.location||"Local não informado")} • ${formatDate(i.event_date)}</div></div>
   </article>`).join("");
   document.querySelectorAll(".item-card").forEach(c=>c.onclick=()=>showDetail(c.dataset.id));
 }
@@ -165,17 +294,21 @@ async function showDetail(id){
   if(error)return;
   currentItem=i;
   const mine=currentUser&&i.user_id===currentUser.id;
+  const authorName=await getProfileName(i.user_id);
   $("#detailContent").innerHTML=`
     ${i.image_url?`<img class="detail-image" src="${esc(i.image_url)}" alt="${esc(i.title)}">`:""}
-    <div class="row" style="margin-top:14px"><span class="pill ${i.type}">${i.type.toUpperCase()}</span><strong>Sala ${i.room}</strong></div>
-    <h2>${esc(i.title)}</h2><p class="detail-text">${esc(i.description)}</p>
+    <div class="row" style="margin-top:14px"><span class="pill ${i.type}">${i.type.toUpperCase()}</span><strong>${locationLabel(String(i.room))}</strong></div>
+    <h2>${esc(i.title)}</h2>
+    <p class="detail-author">Publicado por <strong>${esc(authorName)}</strong></p>
+    <p class="detail-text">${esc(i.description)}</p>
     <p><strong>Local:</strong> ${esc(i.location||"Não informado")}<br><strong>Data:</strong> ${formatDate(i.event_date)}</p>
     ${!currentUser
       ? '<button class="secondary" id="btnLoginDetail">Entre para conversar</button>'
-      : mine
+      : (mine || isAdmin)
         ? `<div class="owner-actions">
-             <button class="secondary" id="btnOwnerInbox">Ver conversas deste item</button>
-             <button class="danger" id="btnDeleteItem">Excluir publicação</button>
+             ${mine?'<button class="secondary" id="btnOwnerInbox">Ver conversas deste item</button>':''}
+             ${isAdmin?'<button class="secondary" id="btnAdminEditItem">Editar publicação</button>':''}
+             <button class="danger" id="btnDeleteItem">${isAdmin&&!mine?'Excluir como chefe':'Excluir publicação'}</button>
            </div>`
         : '<button class="primary" id="btnStartChat">Conversar sobre este item</button>'}
   `;
@@ -184,14 +317,15 @@ async function showDetail(id){
   const b=$("#btnStartChat");if(b)b.onclick=()=>startConversation(i);
   const c=$("#btnOwnerInbox");if(c)c.onclick=()=>{closeModal("detailModal");openInbox(i.id)};
   const d=$("#btnDeleteItem");if(d)d.onclick=()=>deleteItem(i);
+  const e=$("#btnAdminEditItem");if(e)e.onclick=()=>openAdminEditItem(i);
 }
 
 
 async function deleteItem(item){
   if(!db || !currentUser) return;
 
-  if(item.user_id !== currentUser.id){
-    alert("Você só pode excluir suas próprias publicações.");
+  if(item.user_id !== currentUser.id && !isAdmin){
+    alert("Você não tem permissão para excluir esta publicação.");
     return;
   }
 
@@ -207,11 +341,9 @@ async function deleteItem(item){
     btn.textContent="Excluindo...";
   }
 
-  const {error}=await db
-    .from("items")
-    .delete()
-    .eq("id",item.id)
-    .eq("user_id",currentUser.id);
+  let deleteQuery=db.from("items").delete().eq("id",item.id);
+  if(!isAdmin) deleteQuery=deleteQuery.eq("user_id",currentUser.id);
+  const {error}=await deleteQuery;
 
   if(error){
     console.error("Erro ao excluir publicação:", error);
@@ -383,7 +515,7 @@ async function openConversation(conv){
   if($("#chatPlaceholder")) $("#chatPlaceholder").classList.add("hidden");
   if($("#activeChat")) $("#activeChat").classList.remove("hidden");
   if($("#activeChatTitle")) $("#activeChatTitle").textContent=conv.items?.title||"Item";
-  if($("#activeChatSubtitle")) $("#activeChatSubtitle").textContent=`Sala ${conv.items?.room||"-"} • ${conv.items?.type==="achado"?"Achado":"Perdido"}`;
+  if($("#activeChatSubtitle")) $("#activeChatSubtitle").textContent=`${locationLabel(String(conv.items?.room||"-"))} • ${conv.items?.type==="achado"?"Achado":"Perdido"}`;
   if($("#btnOpenItem")) $("#btnOpenItem").onclick=()=>showDetail(conv.item_id);
 
   document.querySelectorAll(".conversation-card").forEach(el=>
@@ -544,27 +676,98 @@ function demoCards(){
 }
 
 
-function showProfile(){
-  if(!currentUser){openModal("authModal");$("#authMessage").textContent="Entre para abrir seu perfil.";return;}
-  const old=document.querySelector("#profileModal"); if(old) old.remove();
+async function showProfile(){
+  if(!currentUser){
+    openModal("authModal");
+    if($("#authMessage")) $("#authMessage").textContent="Entre para abrir seu perfil.";
+    return;
+  }
+
+  const profile=await ensureProfile(currentUser);
+  const currentName=profile?.display_name||defaultDisplayName(currentUser);
+
+  const old=document.querySelector("#profileModal");
+  if(old) old.remove();
+
   const wrap=document.createElement("div");
-  wrap.id="profileModal"; wrap.className="modal";
+  wrap.id="profileModal";
+  wrap.className="modal";
   wrap.innerHTML=`<div class="modal-card small">
     <button class="close" id="closeProfile">×</button>
     <div class="profile-panel">
       <span class="badge" style="color:#4437d6;background:#eceafe;border:0">PERFIL</span>
-      <h2>Minha conta</h2>
-      <p class="profile-email">${esc(currentUser.email||"Usuário")}</p>
-      <button class="primary wide" id="profilePosts">Minhas publicações</button>
+      <h2>Meu perfil</h2>
+
+      <div class="profile-name-box">
+        <label for="profileName">Nome de usuário</label>
+        <input id="profileName" maxlength="60" value="${esc(currentName)}" />
+        <small>Ao entrar pela primeira vez com Google, usamos o nome da sua conta. Você pode alterá-lo aqui.</small>
+        <button class="primary wide" id="profileSaveName">Salvar nome</button>
+        <p id="profileMessage" class="message"></p>
+      </div>
+
+      <p class="profile-email">${esc(currentUser.email||"")}</p>
+      <button class="secondary wide" id="profilePosts">Minhas publicações</button>
       <button class="secondary wide" id="profileChats">Minhas conversas</button>
       <button class="ghost wide" id="profileLogout">Sair da conta</button>
     </div>
   </div>`;
+
   document.body.appendChild(wrap);
+
   $("#closeProfile").onclick=()=>wrap.remove();
-  $("#profilePosts").onclick=()=>{wrap.remove();myPostsOnly=true;currentRoom=fixedRoom||null;loadItems();window.scrollTo({top:document.body.scrollHeight/2,behavior:"smooth"});}
-  $("#profileChats").onclick=()=>{wrap.remove();openInbox();}
-  $("#profileLogout").onclick=async()=>{await db.auth.signOut();wrap.remove();currentUser=null;$("#btnAuth").textContent="Entrar";loadItems();}
+
+  $("#profileSaveName").onclick=async()=>{
+    const input=$("#profileName");
+    const msg=$("#profileMessage");
+    const name=input.value.trim();
+
+    if(name.length<2){
+      msg.textContent="Digite um nome com pelo menos 2 caracteres.";
+      return;
+    }
+
+    const btn=$("#profileSaveName");
+    btn.disabled=true;
+    btn.textContent="Salvando...";
+
+    const {error}=await db.from("profiles")
+      .update({display_name:name,updated_at:new Date().toISOString()})
+      .eq("id",currentUser.id);
+
+    btn.disabled=false;
+    btn.textContent="Salvar nome";
+
+    if(error){
+      console.error("Erro ao alterar nome:",error);
+      msg.textContent="Não foi possível salvar: "+error.message;
+      return;
+    }
+
+    msg.textContent="Nome atualizado!";
+    await loadItems();
+  };
+
+  $("#profilePosts").onclick=()=>{
+    wrap.remove();
+    myPostsOnly=true;
+    currentRoom=fixedRoom||null;
+    loadItems();
+    window.scrollTo({top:document.body.scrollHeight/2,behavior:"smooth"});
+  };
+
+  $("#profileChats").onclick=()=>{
+    wrap.remove();
+    openInbox();
+  };
+
+  $("#profileLogout").onclick=async()=>{
+    await db.auth.signOut();
+    wrap.remove();
+    currentUser=null;
+    if($("#btnAuth")) $("#btnAuth").textContent="Entrar";
+    loadItems();
+  };
 }
 
 function applyTypeFilter(type){
@@ -590,15 +793,438 @@ bind("bottomPublish",()=>$("#btnNew").click());
 bind("bottomInbox",()=>$("#btnInbox").click());
 bind("bottomProfile",showProfile);
 
+
+async function openAdminPanel(){
+  if(!currentUser || !isAdmin){
+    alert("Acesso restrito ao perfil Chefe.");
+    return;
+  }
+
+  let modal=$("#adminModal");
+  if(!modal){
+    modal=document.createElement("div");
+    modal.id="adminModal";
+    modal.className="modal";
+    modal.innerHTML=`
+      <div class="modal-card admin-modal-card">
+        <button class="close" id="closeAdminModal">×</button>
+        <div class="admin-header">
+          <div>
+            <span class="badge admin-badge">CHEFE</span>
+            <h2>Painel de administração</h2>
+            <p>Gerencie publicações e perfis públicos do IXHEI.</p>
+          </div>
+        </div>
+
+        <div class="admin-tabs">
+          <button class="secondary admin-tab active" data-admin-tab="items">Publicações</button>
+          <button class="secondary admin-tab" data-admin-tab="users">Usuários</button>
+          <button class="secondary admin-tab" data-admin-tab="chats">Conversas</button>
+        </div>
+
+        <div id="adminItemsPanel">
+          <div class="admin-toolbar">
+            <input id="adminItemSearch" type="search" placeholder="Pesquisar publicação..." />
+            <button class="secondary" id="adminRefreshItems">Atualizar</button>
+          </div>
+          <div id="adminItemsList" class="admin-list"></div>
+        </div>
+
+        <div id="adminUsersPanel" class="hidden">
+          <div class="admin-toolbar">
+            <input id="adminUserSearch" type="search" placeholder="Pesquisar nome..." />
+            <button class="secondary" id="adminRefreshUsers">Atualizar</button>
+          </div>
+          <div id="adminUsersList" class="admin-list"></div>
+        </div>
+
+        <div id="adminChatsPanel" class="hidden">
+          <div class="admin-toolbar">
+            <input id="adminChatSearch" type="search" placeholder="Pesquisar item ou participante..." />
+            <button class="secondary" id="adminRefreshChats">Atualizar</button>
+          </div>
+          <div id="adminChatsList" class="admin-list"></div>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+
+    $("#closeAdminModal").onclick=()=>modal.remove();
+
+    document.querySelectorAll(".admin-tab").forEach(btn=>{
+      btn.onclick=()=>{
+        document.querySelectorAll(".admin-tab").forEach(b=>b.classList.toggle("active",b===btn));
+        const tab=btn.dataset.adminTab;
+        $("#adminItemsPanel").classList.toggle("hidden",tab!=="items");
+        $("#adminUsersPanel").classList.toggle("hidden",tab!=="users");
+        $("#adminChatsPanel").classList.toggle("hidden",tab!=="chats");
+        if(tab==="users") loadAdminUsers();
+        else if(tab==="chats") loadAdminChats();
+        else loadAdminItems();
+      };
+    });
+
+    $("#adminRefreshItems").onclick=loadAdminItems;
+    $("#adminRefreshUsers").onclick=loadAdminUsers;
+    $("#adminRefreshChats").onclick=loadAdminChats;
+    $("#adminItemSearch").oninput=debounce(loadAdminItems,250);
+    $("#adminUserSearch").oninput=debounce(loadAdminUsers,250);
+    $("#adminChatSearch").oninput=debounce(loadAdminChats,250);
+  }
+
+  await loadAdminItems();
+}
+
+async function loadAdminItems(){
+  if(!isAdmin || !$("#adminItemsList")) return;
+  $("#adminItemsList").innerHTML='<div class="empty"><p>Carregando publicações...</p></div>';
+
+  let q=db.from("items").select("*").order("created_at",{ascending:false}).limit(200);
+  const term=$("#adminItemSearch")?.value.trim();
+  if(term) q=q.or(`title.ilike.%${term}%,description.ilike.%${term}%,location.ilike.%${term}%`);
+
+  const {data,error}=await q;
+  if(error){
+    $("#adminItemsList").innerHTML=`<div class="empty"><p>${esc(error.message)}</p></div>`;
+    return;
+  }
+
+  const items=await attachProfileNames(data||[]);
+  if(!items.length){
+    $("#adminItemsList").innerHTML='<div class="empty"><p>Nenhuma publicação encontrada.</p></div>';
+    return;
+  }
+
+  $("#adminItemsList").innerHTML=items.map(i=>`
+    <article class="admin-row">
+      <div class="admin-row-main">
+        <strong>${esc(i.title)}</strong>
+        <span>${esc(i.author_name||"Usuário")} • ${locationLabel(String(i.room))} • ${i.type==="achado"?"Achado":"Perdido"}</span>
+      </div>
+      <div class="admin-row-actions">
+        <button class="secondary" data-admin-edit="${i.id}">Editar</button>
+        <button class="danger" data-admin-delete="${i.id}">Excluir</button>
+      </div>
+    </article>
+  `).join("");
+
+  document.querySelectorAll("[data-admin-edit]").forEach(btn=>{
+    btn.onclick=()=>{
+      const item=items.find(i=>i.id===btn.dataset.adminEdit);
+      if(item) openAdminEditItem(item);
+    };
+  });
+
+  document.querySelectorAll("[data-admin-delete]").forEach(btn=>{
+    btn.onclick=async()=>{
+      const item=items.find(i=>i.id===btn.dataset.adminDelete);
+      if(!item) return;
+      if(!confirm(`Excluir "${item.title}" como Chefe?`)) return;
+      const {error}=await db.from("items").delete().eq("id",item.id);
+      if(error) alert(error.message);
+      else{
+        await loadAdminItems();
+        await loadItems();
+      }
+    };
+  });
+}
+
+function openAdminEditItem(item){
+  if(!isAdmin) return;
+
+  let modal=$("#adminEditItemModal");
+  if(modal) modal.remove();
+
+  modal=document.createElement("div");
+  modal.id="adminEditItemModal";
+  modal.className="modal";
+  modal.innerHTML=`
+    <div class="modal-card">
+      <button class="close" id="closeAdminEdit">×</button>
+      <span class="badge admin-badge">EDIÇÃO DO CHEFE</span>
+      <h2>Editar publicação</h2>
+
+      <form id="adminEditItemForm">
+        <label>Título
+          <input id="adminEditTitle" maxlength="80" required value="${esc(item.title)}" />
+        </label>
+
+        <label>Descrição
+          <textarea id="adminEditDescription" maxlength="800" required>${esc(item.description||"")}</textarea>
+        </label>
+
+        <div class="two-cols">
+          <label>Tipo
+            <select id="adminEditType">
+              <option value="achado" ${item.type==="achado"?"selected":""}>Achado</option>
+              <option value="perdido" ${item.type==="perdido"?"selected":""}>Perdido</option>
+            </select>
+          </label>
+          <label>Local do site
+            <select id="adminEditRoom"></select>
+          </label>
+        </div>
+
+        <label>Descrição do local
+          <input id="adminEditLocation" maxlength="100" value="${esc(item.location||"")}" />
+        </label>
+
+        <label>Data
+          <input id="adminEditDate" type="date" value="${esc(item.event_date||"")}" />
+        </label>
+
+        <button class="primary wide" type="submit">Salvar alterações</button>
+        <p id="adminEditMessage" class="message"></p>
+      </form>
+    </div>`;
+
+  document.body.appendChild(modal);
+  $("#closeAdminEdit").onclick=()=>modal.remove();
+
+  const sel=$("#adminEditRoom");
+  sel.innerHTML=[
+    ...rooms.map(n=>`<option value="${n}">Sala ${n}</option>`),
+    ...extraLocations.map(l=>`<option value="${l.value}">${l.label}</option>`)
+  ].join("");
+  sel.value=String(item.room);
+
+  $("#adminEditItemForm").onsubmit=async e=>{
+    e.preventDefault();
+    const payload={
+      title:$("#adminEditTitle").value.trim(),
+      description:$("#adminEditDescription").value.trim(),
+      type:$("#adminEditType").value,
+      room:$("#adminEditRoom").value,
+      location:$("#adminEditLocation").value.trim(),
+      event_date:$("#adminEditDate").value||null
+    };
+
+    const msg=$("#adminEditMessage");
+    msg.textContent="Salvando...";
+
+    const {error}=await db.from("items").update(payload).eq("id",item.id);
+    if(error){
+      msg.textContent=error.message;
+      return;
+    }
+
+    msg.textContent="Alterações salvas.";
+    setTimeout(()=>modal.remove(),350);
+    await loadItems();
+    if($("#adminModal")) await loadAdminItems();
+  };
+}
+
+async function loadAdminUsers(){
+  if(!isAdmin || !$("#adminUsersList")) return;
+  $("#adminUsersList").innerHTML='<div class="empty"><p>Carregando usuários...</p></div>';
+
+  let q=db.from("profiles")
+    .select("id,display_name,role,updated_at")
+    .order("display_name",{ascending:true})
+    .limit(200);
+
+  const term=$("#adminUserSearch")?.value.trim();
+  if(term) q=q.ilike("display_name",`%${term}%`);
+
+  const {data,error}=await q;
+  if(error){
+    $("#adminUsersList").innerHTML=`<div class="empty"><p>${esc(error.message)}</p></div>`;
+    return;
+  }
+
+  $("#adminUsersList").innerHTML=(data||[]).map(p=>`
+    <article class="admin-row">
+      <div class="admin-row-main">
+        <strong>${esc(p.display_name)}</strong>
+        <span>${p.role==="admin"?"Chefe":"Usuário"}</span>
+      </div>
+      <div class="admin-row-actions">
+        <button class="secondary" data-admin-user-edit="${p.id}" data-admin-user-name="${esc(p.display_name)}">
+          Alterar nome
+        </button>
+      </div>
+    </article>
+  `).join("");
+
+  document.querySelectorAll("[data-admin-user-edit]").forEach(btn=>{
+    btn.onclick=async()=>{
+      const current=btn.dataset.adminUserName;
+      const name=prompt("Novo nome público do usuário:",current);
+      if(name===null) return;
+      const clean=name.trim();
+      if(clean.length<2 || clean.length>60){
+        alert("O nome deve ter entre 2 e 60 caracteres.");
+        return;
+      }
+
+      const {error}=await db.from("profiles")
+        .update({display_name:clean})
+        .eq("id",btn.dataset.adminUserEdit);
+
+      if(error) alert(error.message);
+      else{
+        await loadAdminUsers();
+        await loadItems();
+      }
+    };
+  });
+}
+
+
+
+async function loadAdminChats(){
+  if(!isAdmin || !$("#adminChatsList")) return;
+
+  $("#adminChatsList").innerHTML='<div class="empty"><p>Carregando conversas...</p></div>';
+
+  const {data:convs,error}=await db
+    .from("conversations")
+    .select("id,item_id,item_owner_id,requester_id,created_at,updated_at,items(id,title,room,type)")
+    .order("updated_at",{ascending:false})
+    .limit(200);
+
+  if(error){
+    $("#adminChatsList").innerHTML=`<div class="empty"><p>${esc(error.message)}</p></div>`;
+    return;
+  }
+
+  const userIds=[...new Set((convs||[]).flatMap(c=>[c.item_owner_id,c.requester_id]).filter(Boolean))];
+  let profileMap=new Map();
+
+  if(userIds.length){
+    const {data:profiles}=await db
+      .from("profiles")
+      .select("id,display_name")
+      .in("id",userIds);
+
+    profileMap=new Map((profiles||[]).map(p=>[p.id,p.display_name]));
+  }
+
+  const term=($("#adminChatSearch")?.value||"").trim().toLowerCase();
+
+  const rows=(convs||[]).map(c=>({
+    ...c,
+    owner_name:profileMap.get(c.item_owner_id)||"Usuário",
+    requester_name:profileMap.get(c.requester_id)||"Usuário"
+  })).filter(c=>{
+    if(!term) return true;
+    const hay=[
+      c.items?.title||"",
+      c.owner_name,
+      c.requester_name,
+      locationLabel(String(c.items?.room||""))
+    ].join(" ").toLowerCase();
+    return hay.includes(term);
+  });
+
+  if(!rows.length){
+    $("#adminChatsList").innerHTML='<div class="empty"><p>Nenhuma conversa encontrada.</p></div>';
+    return;
+  }
+
+  $("#adminChatsList").innerHTML=rows.map(c=>`
+    <article class="admin-row admin-chat-row">
+      <div class="admin-row-main">
+        <strong>${esc(c.items?.title||"Item")}</strong>
+        <span>${esc(c.owner_name)} ↔ ${esc(c.requester_name)}</span>
+        <small>${locationLabel(String(c.items?.room||"-"))}</small>
+      </div>
+      <div class="admin-row-actions">
+        <button class="secondary" data-admin-open-chat="${c.id}">Ler conversa</button>
+      </div>
+    </article>
+  `).join("");
+
+  document.querySelectorAll("[data-admin-open-chat]").forEach(btn=>{
+    btn.onclick=()=>openAdminChat(btn.dataset.adminOpenChat);
+  });
+}
+
+async function openAdminChat(conversationId){
+  if(!isAdmin) return;
+
+  const {data:conv,error:convError}=await db
+    .from("conversations")
+    .select("id,item_id,item_owner_id,requester_id,items(id,title,room,type)")
+    .eq("id",conversationId)
+    .single();
+
+  if(convError){
+    alert(convError.message);
+    return;
+  }
+
+  const ids=[conv.item_owner_id,conv.requester_id];
+  const {data:profiles}=await db
+    .from("profiles")
+    .select("id,display_name")
+    .in("id",ids);
+
+  const names=new Map((profiles||[]).map(p=>[p.id,p.display_name]));
+
+  const {data:messages,error}=await db
+    .from("messages")
+    .select("id,sender_id,body,created_at,read_at")
+    .eq("conversation_id",conversationId)
+    .order("created_at",{ascending:true});
+
+  if(error){
+    alert(error.message);
+    return;
+  }
+
+  let modal=$("#adminChatModal");
+  if(modal) modal.remove();
+
+  modal=document.createElement("div");
+  modal.id="adminChatModal";
+  modal.className="modal";
+
+  const ownerName=names.get(conv.item_owner_id)||"Usuário";
+  const requesterName=names.get(conv.requester_id)||"Usuário";
+
+  modal.innerHTML=`
+    <div class="modal-card admin-chat-modal-card">
+      <button class="close" id="closeAdminChat">×</button>
+      <span class="badge admin-badge">VISUALIZAÇÃO DO CHEFE</span>
+      <h2>${esc(conv.items?.title||"Conversa")}</h2>
+      <p class="admin-chat-participants">${esc(ownerName)} ↔ ${esc(requesterName)}</p>
+
+      <div class="admin-chat-messages">
+        ${(messages||[]).length
+          ? (messages||[]).map(m=>{
+              const sender=names.get(m.sender_id)||"Usuário";
+              return `<div class="admin-chat-message">
+                <div class="admin-chat-message-head">
+                  <strong>${esc(sender)}</strong>
+                  <small>${formatTime(m.created_at)}</small>
+                </div>
+                <p>${esc(m.body)}</p>
+              </div>`;
+            }).join("")
+          : '<div class="empty"><p>Nenhuma mensagem nesta conversa.</p></div>'
+        }
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+  $("#closeAdminChat").onclick=()=>modal.remove();
+}
+
+
 if(db){
   db.auth.onAuthStateChange(async(event,session)=>{
     currentUser=session?.user||null;
     if($("#btnAuth")) $("#btnAuth").textContent=currentUser?"Sair":"Entrar";
     if(currentUser){
+      await ensureProfile(currentUser);
+      await updateAdminState();
       subscribeInbox();
       updateUnreadBadge();
       if(event==="SIGNED_IN") closeModal("authModal");
     }else{
+      isAdmin=false; currentProfile=null; renderAdminNav();
       unsubscribeInbox();
       if($("#unreadBadge")) $("#unreadBadge").classList.add("hidden");
     }

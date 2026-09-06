@@ -101,3 +101,326 @@ input,select,textarea{width:100%;border:1px solid var(--border);border-radius:12
   font-weight:900;
   color:#4285f4;
 }
+
+/* Páginas de locais e desenvolvedores */
+.dev-link{font-weight:700;text-decoration:none;color:inherit;padding:8px 10px;border-radius:10px}
+.dev-link:hover{background:rgba(0,0,0,.05)}
+.developers-page{max-width:1000px;margin:0 auto;padding:48px 20px}
+.developers-hero{text-align:center;margin-bottom:32px}
+.developers-hero h1{font-size:clamp(32px,6vw,56px);margin:8px 0}
+.developers-hero p{opacity:.72}
+.developers-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;max-width:720px;margin:0 auto}
+.developer-card{text-align:center;padding:28px;border:1px solid rgba(0,0,0,.08);border-radius:18px;background:#fff}
+.developer-avatar{width:76px;height:76px;border-radius:50%;display:grid;place-items:center;margin:0 auto 14px;background:#111;color:#fff;font-size:24px;font-weight:900}
+.developer-card h2{margin:5px 0}
+.developer-card p,.developers-note{opacity:.7}
+.developers-note{text-align:center;margin-top:22px}
+
+
+/* Nome de usuário e perfil */
+.item-author,.detail-author{
+  margin:6px 0 10px;
+  font-size:13px;
+  opacity:.78;
+}
+.profile-name-box{
+  margin:18px 0;
+  padding:14px;
+  border:1px solid rgba(0,0,0,.08);
+  border-radius:14px;
+  text-align:left;
+}
+.profile-name-box label{
+  display:block;
+  font-weight:800;
+  margin-bottom:7px;
+}
+.profile-name-box input{
+  width:100%;
+  box-sizing:border-box;
+  margin-bottom:7px;
+}
+.profile-name-box small{
+  display:block;
+  opacity:.7;
+  line-height:1.4;
+  margin-bottom:12px;
+}
+
+.nav-link{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  text-decoration:none;
+  cursor:pointer;
+}
+
+
+/* Página do projeto / desenvolvedores */
+.project-page{
+  max-width:1100px;
+  margin:0 auto;
+  padding:54px 22px 70px;
+}
+.project-intro,
+.development-section,
+.team-section,
+.developers-section{
+  margin-bottom:76px;
+}
+.section-kicker{
+  display:inline-block;
+  color:#0a9b8e;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:2px;
+  margin-bottom:10px;
+}
+.project-intro > h1,
+.big-section-title{
+  margin:0 0 8px;
+  color:#0b2d49;
+  font-size:clamp(34px,5vw,52px);
+  line-height:1.08;
+}
+.section-subtitle{
+  margin:0 0 32px;
+  color:#536979;
+  font-size:16px;
+}
+.project-cards{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:22px;
+}
+.project-info-card,
+.team-role-card{
+  background:#fff;
+  border:1px solid #d7e0e5;
+  border-radius:14px;
+  padding:28px;
+  box-shadow:0 10px 28px rgba(28,52,68,.05);
+}
+.card-number{
+  display:block;
+  color:#ff6048;
+  font-weight:900;
+  margin-bottom:18px;
+}
+.project-info-card h2,
+.team-role-card h3{
+  margin:0 0 10px;
+  color:#0b2d49;
+}
+.project-info-card p,
+.team-role-card p{
+  margin:0;
+  color:#536979;
+  line-height:1.65;
+}
+.development-list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  margin-top:30px;
+}
+.development-step{
+  padding:17px 18px;
+  background:#f2f6f7;
+  border-left:4px solid #29afa7;
+  border-radius:7px;
+  color:#18384c;
+}
+.team-role-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:20px;
+}
+.developers-section .developers-grid{
+  margin-top:28px;
+}
+@media (max-width:760px){
+  .project-cards,
+  .team-role-grid{
+    grid-template-columns:1fr;
+  }
+  .project-page{
+    padding:36px 16px 55px;
+  }
+  .project-intro,
+  .development-section,
+  .team-section,
+  .developers-section{
+    margin-bottom:52px;
+  }
+}
+
+
+/* Conheça o projeto — paleta padrão IXHEI */
+.project-page{
+  --ixhei-purple:#5b49f5;
+  --ixhei-purple-dark:#352a72;
+  --ixhei-purple-soft:#eeebff;
+  --ixhei-text:#17152d;
+}
+.project-page .section-kicker,
+.project-page .card-number{
+  color:var(--ixhei-purple);
+}
+.project-page .project-intro > h1,
+.project-page .big-section-title,
+.project-page .project-info-card h2,
+.project-page .team-role-card h3{
+  color:var(--ixhei-text);
+}
+.project-page .section-subtitle,
+.project-page .project-info-card p,
+.project-page .team-role-card p{
+  color:#625f78;
+}
+.project-page .development-step{
+  background:var(--ixhei-purple-soft);
+  border-left-color:var(--ixhei-purple);
+  color:var(--ixhei-text);
+}
+.project-page .project-info-card,
+.project-page .team-role-card,
+.project-page .developer-card{
+  border-color:#ded9ff;
+}
+.project-page .developer-avatar{
+  background:linear-gradient(135deg,var(--ixhei-purple-dark),var(--ixhei-purple));
+}
+
+
+/* Painel Chefe / Admin */
+.admin-nav-btn{
+  font-weight:800;
+}
+.admin-modal-card{
+  width:min(960px,94vw);
+  max-height:88vh;
+  overflow:auto;
+}
+.admin-header{
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  align-items:flex-start;
+  margin-bottom:16px;
+}
+.admin-badge{
+  background:#eceafe !important;
+  color:#4b3fe0 !important;
+  border:0 !important;
+}
+.admin-tabs{
+  display:flex;
+  gap:8px;
+  margin:16px 0;
+}
+.admin-tab.active{
+  background:#5b49f5;
+  color:white;
+  border-color:#5b49f5;
+}
+.admin-toolbar{
+  display:flex;
+  gap:10px;
+  margin-bottom:14px;
+}
+.admin-toolbar input{
+  flex:1;
+}
+.admin-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.admin-row{
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  align-items:center;
+  border:1px solid #e3e0f5;
+  background:#fff;
+  border-radius:12px;
+  padding:14px;
+}
+.admin-row-main{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.admin-row-main strong{
+  color:#17152d;
+}
+.admin-row-main span{
+  color:#6a677c;
+  font-size:13px;
+}
+.admin-row-actions{
+  display:flex;
+  gap:8px;
+  flex-shrink:0;
+}
+@media(max-width:680px){
+  .admin-row{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .admin-row-actions{
+    width:100%;
+  }
+  .admin-row-actions button{
+    flex:1;
+  }
+  .admin-toolbar{
+    flex-direction:column;
+  }
+}
+
+
+/* Leitura de conversas pelo Chefe */
+.admin-chat-row small{
+  color:#7a768e;
+}
+.admin-chat-modal-card{
+  width:min(820px,94vw);
+  max-height:88vh;
+  overflow:auto;
+}
+.admin-chat-participants{
+  color:#6a677c;
+  margin-top:-6px;
+}
+.admin-chat-messages{
+  margin-top:18px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.admin-chat-message{
+  background:#f5f3ff;
+  border:1px solid #e1dcff;
+  border-radius:12px;
+  padding:12px 14px;
+}
+.admin-chat-message-head{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:7px;
+}
+.admin-chat-message-head strong{
+  color:#352a72;
+}
+.admin-chat-message-head small{
+  color:#7a768e;
+}
+.admin-chat-message p{
+  margin:0;
+  white-space:pre-wrap;
+  word-break:break-word;
+}

@@ -94,3 +94,63 @@ Antes de testar, execute `permitir_excluir_publicacao.sql` no SQL Editor do Supa
 A política RLS garante que um usuário autenticado só consiga excluir linhas da tabela `items` cujo `user_id` seja o próprio usuário.
 
 Como `conversations.item_id` usa `ON DELETE CASCADE`, excluir o item também remove as conversas e mensagens relacionadas.
+
+
+## Login com Google
+
+Esta versão adiciona o botão **Continuar com Google** automaticamente em todas as páginas.
+
+No Supabase:
+- Authentication > Sign In / Providers > Google: habilite o Google e informe Client ID + Client Secret.
+- Authentication > URL Configuration:
+  - Site URL: `https://carlinz73.github.io/IXHEI/`
+  - Redirect URL: `https://carlinz73.github.io/IXHEI/**`
+
+No Google Cloud:
+- URI autorizada de redirecionamento:
+  `https://kcjfeanctyjxiiiackgo.supabase.co/auth/v1/callback`
+
+Nunca coloque o Client Secret do Google no GitHub.
+
+
+## Perfis e nomes de usuário
+
+Execute `adicionar_perfis_nomes.sql` no SQL Editor do Supabase.
+
+Com esta versão:
+- Login Google usa automaticamente o nome da conta Google no primeiro acesso.
+- Login por e-mail usa inicialmente a parte antes de `@` como nome.
+- O usuário pode alterar o próprio nome em **Perfil**.
+- As publicações mostram **Publicado por <nome>**.
+- Outros usuários podem ver apenas o nome público; o e-mail não é salvo na tabela pública de perfis.
+
+
+## Perfil Chefe / Administrador
+
+1. Execute `adicionar_perfil_chefe.sql` no SQL Editor do Supabase.
+2. Antes de executar, altere `SEU_EMAIL_AQUI` para o e-mail da conta que será o Chefe.
+3. Entre novamente no IXHEI com essa conta.
+4. O botão **Painel Chefe** aparecerá no menu.
+
+O Chefe pode:
+- editar qualquer publicação;
+- excluir qualquer publicação;
+- pesquisar publicações;
+- alterar o nome público de usuários.
+
+O cargo de administrador NÃO pode ser escolhido no cadastro comum.
+As permissões também são verificadas no Supabase (RLS), não apenas no JavaScript.
+
+
+## Login normal + Painel Chefe
+
+Não existe uma segunda senha para abrir o painel.
+
+O usuário entra normalmente no IXHEI com e-mail/senha ou Google. Se o perfil dele estiver com `role = 'admin'`, o botão **Painel Chefe** aparece automaticamente.
+
+O painel agora possui:
+- Publicações
+- Usuários
+- Conversas
+
+A aba Conversas permite visualizar chats para fins de moderação.

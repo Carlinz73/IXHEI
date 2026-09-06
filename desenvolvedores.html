@@ -4,59 +4,90 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="IXHEI - Achados e Perdidos por sala" />
-  <title>IXHEI - Sala 2</title>
+  <title>Conheça o projeto • IXHEI</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body data-room="2">
+<body>
   <header class="topbar">
     <a class="brand" href="#">IXHEI</a>
-    <nav>
+    <nav class="desktop-nav">
       <button class="ghost" id="btnHome">Início</button>
-      <button class="ghost" id="btnMyPosts">Minhas publicações</button>
+      <button class="ghost" id="btnAchados">Achados</button>
+      <button class="ghost" id="btnPerdidos">Perdidos</button>
       <button class="ghost" id="btnInbox">Conversas <span id="unreadBadge" class="unread-badge hidden">0</span></button>
       <button class="primary" id="btnNew">+ Publicar</button>
       <a class="ghost nav-link" href="desenvolvedores.html">Conheça o projeto</a>
+      <button class="ghost" id="btnProfile">Perfil</button>
       <button class="ghost" id="btnAuth">Entrar</button>
+          <button id="btnMyPosts" class="hidden" type="button" aria-hidden="true"></button>
     </nav>
   </header>
 
-  <main class="container">
-    <section class="hero">
-      <div>
-        <span class="badge">Achados e Perdidos</span>
-        <h1>Sala 2 <span>• IXHEI</span></h1>
-        <p>Achados e perdidos exclusivos da Sala 2.</p>
-      </div>
-      <div class="search-box">
-        <input id="searchInput" type="search" placeholder="Pesquisar: estojo, chave, garrafa..." />
-        <select id="typeFilter">
-          <option value="">Todos</option>
-          <option value="achado">Achados</option>
-          <option value="perdido">Perdidos</option>
-        </select>
-      </div>
-    </section>
+  <main class="project-page">
+  <section class="project-intro">
+    <span class="section-kicker">PRIMEIRA VERSÃO</span>
+    <h1>Conheça o projeto</h1>
+    <p class="section-subtitle">O IXHEI foi criado para facilitar a localização e devolução de objetos perdidos dentro da escola.</p>
 
-    <section>
-      <h2>Salas</h2>
-      <div id="roomTabs" class="rooms"><a class="room " href="sala1.html">Sala 1</a><a class="room active" href="sala2.html">Sala 2</a><a class="room " href="sala3.html">Sala 3</a><a class="room " href="sala4.html">Sala 4</a><a class="room " href="sala5.html">Sala 5</a><a class="room " href="sala6.html">Sala 6</a><a class="room " href="sala7.html">Sala 7</a><a class="room " href="sala8.html">Sala 8</a><a class="room " href="sala9.html">Sala 9</a><a class="room " href="sala10.html">Sala 10</a><a class="room " href="sala11.html">Sala 11</a><a class="room " href="sala12.html">Sala 12</a><a class="room " href="sala13.html">Sala 13</a><a class="room " href="sala14.html">Sala 14</a></div>
-    </section>
+    <div class="project-cards">
+      <article class="project-info-card">
+        <span class="card-number">01</span>
+        <h2>Problema</h2>
+        <p>Objetos perdidos na escola muitas vezes não chegam de volta aos seus donos por falta de um local centralizado para divulgar achados e perdidos.</p>
+      </article>
 
-    <section class="content-head">
-      <div>
-        <h2 id="listTitle">Publicações recentes</h2>
-        <p id="listSubtitle">Itens publicados pela comunidade.</p>
-      </div>
-      <button class="secondary" id="btnClearRoom">Todas as salas</button>
-    </section>
+      <article class="project-info-card">
+        <span class="card-number">02</span>
+        <h2>Público-alvo</h2>
+        <p>Alunos e demais membros da comunidade escolar que perderam ou encontraram algum objeto nas salas, pátio ou corredores.</p>
+      </article>
 
-    <section id="itemsGrid" class="grid"></section>
-    <div id="emptyState" class="empty hidden">
-      <h3>Nenhum item encontrado</h3>
-      <p>Tente outra sala ou publique um novo item.</p>
+      <article class="project-info-card">
+        <span class="card-number">03</span>
+        <h2>Solução inicial</h2>
+        <p>Uma plataforma online onde os usuários podem publicar itens, informar o local, adicionar fotos e conversar para facilitar a devolução.</p>
+      </article>
     </div>
-  </main>
+  </section>
+
+  <section class="development-section">
+    <span class="section-kicker">ORGANIZAÇÃO</span>
+    <h2 class="big-section-title">Etapas do desenvolvimento</h2>
+
+    <div class="development-list">
+      <div class="development-step"><strong>1. Requisitos:</strong> entender o problema e as necessidades da comunidade escolar.</div>
+      <div class="development-step"><strong>2. Análise:</strong> selecionar as funcionalidades mais importantes para a primeira versão.</div>
+      <div class="development-step"><strong>3. Projeto:</strong> planejar as telas, banco de dados, usuários, salas e conversas.</div>
+      <div class="development-step"><strong>4. Implementação:</strong> desenvolver o site em HTML, CSS e JavaScript integrado ao Supabase.</div>
+      <div class="development-step"><strong>5. Testes:</strong> verificar login, publicações, exclusão, filtros, salas e sistema de conversas.</div>
+      <div class="development-step"><strong>6. Melhoria:</strong> corrigir problemas e adicionar novas funcionalidades ao IXHEI.</div>
+    </div>
+  </section>
+
+  <section class="team-section">
+    <span class="section-kicker">COLABORAÇÃO</span>
+    <h2 class="big-section-title">Equipe do projeto</h2>
+    <p class="section-subtitle">Responsabilidades da equipe responsável pelo desenvolvimento do IXHEI.</p>
+
+    <div class="team-role-grid">
+      <article class="team-role-card">
+        <h3>Product Owner</h3>
+        <p>A definir</p>
+      </article>
+
+      <article class="team-role-card">
+        <h3>Scrum Master</h3>
+        <p>A definir</p>
+      </article>
+
+      <article class="team-role-card">
+        <h3>Desenvolvedores</h3>
+        <p>Carlos Eduardo</p>
+      </article>
+    </div>
+  </section>
+</main>
 
   <div class="modal hidden" id="authModal">
     <div class="modal-card small">
