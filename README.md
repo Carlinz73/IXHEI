@@ -1,156 +1,127 @@
-# IXHEI — versão com chat melhorado
+# IXHEI — Achados e Perdidos
 
-Esta versão adiciona:
+Versão refeita e consolidada.
 
-- Caixa de entrada de conversas
-- Uma conversa separada para cada item + pessoa interessada
-- Mensagens em bolhas
-- Contador de mensagens não lidas
-- Atualização em tempo real usando Supabase Realtime
-- Lista das conversas mais recentes
-- Botão "Ver item"
-- Dono do item pode abrir as conversas relacionadas
-- Usuário interessado pode iniciar conversa pela publicação
+## O que está incluído
 
-## IMPORTANTE: banco novo
+- Página inicial.
+- Salas 1 a 14.
+- Pátio e Corredor.
+- Publicação de itens achados e perdidos.
+- Foto opcional armazenada no Supabase Storage.
+- Login por e-mail e senha.
+- Login com Google.
+- Perfil com nome público editável.
+- Nome do autor nas publicações.
+- Exclusão da própria publicação.
+- Conversas entre usuários.
+- Realtime para novas mensagens.
+- Página "Conheça o projeto".
+- Painel Chefe/Admin.
+- Chefe pode editar e excluir qualquer publicação.
+- Chefe pode alterar nomes públicos.
+- Chefe pode visualizar conversas para moderação.
+- Aviso de moderação na área de conversas.
 
-Se você ainda não criou o banco, rode `schema.sql` normalmente.
+## Instalação do zero
 
-Se você já usou a versão anterior, o mais simples para um projeto ainda em testes é:
-1. Apagar as tabelas `messages` antigas pelo Supabase.
-2. Rodar o `schema.sql` desta nova versão.
-3. Manter `items` se quiser preservar os itens existentes.
+### 1. Supabase
 
-Se o SQL reclamar que uma tabela já existe com estrutura antiga, use o arquivo `migracao_chat.sql`.
+Abra `INSTALAR_TUDO.sql`, copie tudo e execute em:
 
-## Supabase Realtime
+Supabase > SQL Editor > New query > Run
 
-No painel do Supabase:
-1. Vá em Database > Publications ou Realtime.
-2. Ative Realtime para a tabela `messages`.
+Esse único arquivo cria/corrige:
+- items
+- profiles
+- conversations
+- messages
+- RLS
+- Storage `item-images`
+- Realtime
+- permissões do Chefe
 
-## Configuração
+### 2. Chave do Supabase
 
-Em `config.js`, coloque sua Project URL e sua chave anon/public.
+Abra `config.js`.
 
-Nunca use a service_role no site.
+O URL do projeto já está preenchido:
 
+https://kcjfeanctyjxiiiackgo.supabase.co
 
-## Salas separadas
+Troque somente:
 
-Agora cada sala possui uma página própria:
+COLE_SUA_PUBLISHABLE_KEY_AQUI
 
-- `sala1.html`
-- `sala2.html`
-- ...
-- `sala14.html`
+pela Publishable key do Supabase.
 
-Cada página filtra automaticamente as publicações daquela sala.
-Ao publicar dentro de uma sala, o número da sala já fica definido.
+Nunca coloque Secret key/service_role no site.
 
-No GitHub Pages, os links ficarão parecidos com:
+### 3. Criar o Chefe
 
-`https://SEU-USUARIO.github.io/ixhei/sala1.html`
+Primeiro faça login/crie a conta no IXHEI.
 
-até
+Depois abra `TORNAR_CHEFE.sql`.
 
-`https://SEU-USUARIO.github.io/ixhei/sala14.html`
+Troque as DUAS ocorrências de:
 
+SEU_EMAIL_AQUI
 
-## Nova página inicial
+pelo e-mail exato da sua conta.
 
-A página `index.html` agora tem visual de aplicativo com:
-- 14 cartões grandes das salas
-- atalhos de Achados, Perdidos, Conversas e Perfil
-- botão rápido de publicação
-- barra inferior no celular
-- perfil com acesso às publicações e conversas
+Execute o SQL.
 
-Nenhuma alteração adicional no banco é necessária para esta melhoria visual.
+Saia do IXHEI e entre novamente. A conta com `role = admin` verá o botão `Painel Chefe`.
 
+Não existe segunda senha administrativa. O login é o login normal da conta.
 
-## Correção
-As salas agora estão escritas diretamente no HTML e continuam navegáveis mesmo se o JavaScript ou Supabase falhar. O JavaScript também foi ajustado para não parar quando um botão opcional não existe.
+### 4. Google OAuth
 
+No Supabase, ative o provedor Google.
 
-## CORREÇÃO DO CHAT
+No Google Cloud, use como Authorized redirect URI:
 
-1. Abra o Supabase.
-2. Vá em SQL Editor.
-3. Crie uma New query.
-4. Copie TODO o conteúdo de `reparo_chat.sql`.
-5. Clique em Run.
-6. Substitua o `app.js` do GitHub pelo `app.js` desta versão.
-7. Aguarde o GitHub Pages atualizar e teste com duas contas diferentes.
+https://kcjfeanctyjxiiiackgo.supabase.co/auth/v1/callback
 
-O novo app.js mostra na tela qualquer erro que vier do Supabase, em vez de falhar silenciosamente.
+No Supabase > Authentication > URL Configuration:
 
+Site URL:
+https://carlinz73.github.io/IXHEI/
 
-## Excluir publicação
+Redirect URL:
+https://carlinz73.github.io/IXHEI/**
 
-Agora o dono de uma publicação vê o botão **Excluir publicação** ao abrir os detalhes do item.
+### 5. GitHub Pages
 
-Antes de testar, execute `permitir_excluir_publicacao.sql` no SQL Editor do Supabase.
-A política RLS garante que um usuário autenticado só consiga excluir linhas da tabela `items` cujo `user_id` seja o próprio usuário.
+Envie TODOS os arquivos desta pasta para a raiz do repositório IXHEI.
 
-Como `conversations.item_id` usa `ON DELETE CASCADE`, excluir o item também remove as conversas e mensagens relacionadas.
+GitHub:
+Settings > Pages
 
+Source:
+Deploy from a branch
 
-## Login com Google
+Branch:
+main
 
-Esta versão adiciona o botão **Continuar com Google** automaticamente em todas as páginas.
+Folder:
+/ (root)
 
-No Supabase:
-- Authentication > Sign In / Providers > Google: habilite o Google e informe Client ID + Client Secret.
-- Authentication > URL Configuration:
-  - Site URL: `https://carlinz73.github.io/IXHEI/`
-  - Redirect URL: `https://carlinz73.github.io/IXHEI/**`
+Depois faça o commit e aguarde a publicação.
 
-No Google Cloud:
-- URI autorizada de redirecionamento:
-  `https://kcjfeanctyjxiiiackgo.supabase.co/auth/v1/callback`
+## Teste recomendado
 
-Nunca coloque o Client Secret do Google no GitHub.
+1. Abra o site.
+2. Crie/entre com uma conta comum.
+3. Publique um item.
+4. Entre com outra conta e inicie uma conversa.
+5. Teste o chat.
+6. Entre com a conta Chefe.
+7. Confirme que aparece `Painel Chefe`.
+8. Teste Publicações, Usuários e Conversas.
 
+## Segurança
 
-## Perfis e nomes de usuário
+A conta não vira Chefe pelo JavaScript. O cargo fica no banco (`profiles.role`) e as operações administrativas são verificadas pelas políticas RLS do Supabase.
 
-Execute `adicionar_perfis_nomes.sql` no SQL Editor do Supabase.
-
-Com esta versão:
-- Login Google usa automaticamente o nome da conta Google no primeiro acesso.
-- Login por e-mail usa inicialmente a parte antes de `@` como nome.
-- O usuário pode alterar o próprio nome em **Perfil**.
-- As publicações mostram **Publicado por <nome>**.
-- Outros usuários podem ver apenas o nome público; o e-mail não é salvo na tabela pública de perfis.
-
-
-## Perfil Chefe / Administrador
-
-1. Execute `adicionar_perfil_chefe.sql` no SQL Editor do Supabase.
-2. Antes de executar, altere `SEU_EMAIL_AQUI` para o e-mail da conta que será o Chefe.
-3. Entre novamente no IXHEI com essa conta.
-4. O botão **Painel Chefe** aparecerá no menu.
-
-O Chefe pode:
-- editar qualquer publicação;
-- excluir qualquer publicação;
-- pesquisar publicações;
-- alterar o nome público de usuários.
-
-O cargo de administrador NÃO pode ser escolhido no cadastro comum.
-As permissões também são verificadas no Supabase (RLS), não apenas no JavaScript.
-
-
-## Login normal + Painel Chefe
-
-Não existe uma segunda senha para abrir o painel.
-
-O usuário entra normalmente no IXHEI com e-mail/senha ou Google. Se o perfil dele estiver com `role = 'admin'`, o botão **Painel Chefe** aparece automaticamente.
-
-O painel agora possui:
-- Publicações
-- Usuários
-- Conversas
-
-A aba Conversas permite visualizar chats para fins de moderação.
+Usuários comuns não recebem permissão de banco para modificar `profiles.role`.

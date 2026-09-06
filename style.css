@@ -424,3 +424,15 @@ input,select,textarea{width:100%;border:1px solid var(--border);border-radius:12
   white-space:pre-wrap;
   word-break:break-word;
 }
+
+
+.moderation-notice{
+  margin:0 42px 14px 0;
+  padding:10px 12px;
+  border:1px solid #e3e0f5;
+  border-radius:10px;
+  background:#f7f5ff;
+  color:#625d78;
+  font-size:12px;
+  line-height:1.45;
+}
