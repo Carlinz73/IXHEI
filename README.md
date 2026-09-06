@@ -125,3 +125,13 @@ Depois faça o commit e aguarde a publicação.
 A conta não vira Chefe pelo JavaScript. O cargo fica no banco (`profiles.role`) e as operações administrativas são verificadas pelas políticas RLS do Supabase.
 
 Usuários comuns não recebem permissão de banco para modificar `profiles.role`.
+
+
+## Correção de navegação
+
+A barra superior agora usa links diretos:
+- Início → `index.html`
+- Achados → `index.html?type=achado`
+- Perdidos → `index.html?type=perdido`
+
+Assim os botões continuam funcionando inclusive na página `Conheça o projeto`.

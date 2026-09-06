@@ -771,10 +771,20 @@ async function showProfile(){
 }
 
 function applyTypeFilter(type){
-  $("#typeFilter").value=type;
+  const filter=$("#typeFilter");
+  const target=$("#itemsGrid");
+
+  // Em páginas como "Conheça o projeto", não existe a área de publicações.
+  // Nesse caso, leva para a página inicial já com o filtro escolhido.
+  if(!filter || !target){
+    location.href=`index.html?type=${encodeURIComponent(type)}`;
+    return;
+  }
+
+  filter.value=type;
   myPostsOnly=false;
   loadItems();
-  const target=$("#itemsGrid"); if(target) target.scrollIntoView({behavior:"smooth",block:"start"});
+  target.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 const bind=(id,fn)=>{const el=$("#"+id);if(el)el.onclick=fn};
@@ -1234,6 +1244,17 @@ if(db){
 (async()=>{
   setupRooms();
   setupGoogleLogin();
+
+  const params=new URLSearchParams(window.location.search);
+  const requestedType=params.get("type");
+  if($("#typeFilter") && (requestedType==="achado" || requestedType==="perdido")){
+    $("#typeFilter").value=requestedType;
+  }
+
   await refreshAuth();
   loadItems();
+
+  if(requestedType && $("#itemsGrid")){
+    setTimeout(()=>$("#itemsGrid")?.scrollIntoView({behavior:"smooth",block:"start"}),100);
+  }
 })();
